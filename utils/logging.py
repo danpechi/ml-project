@@ -3,13 +3,14 @@ import time
 
 def log_to_wandb(results, metrics):
     # Configure experiment
+    
     experiment_name = "we should change this, probably being passed in"
     quantization_strategy = "we should change this, probably being passed in"
     config = {
         "experiment_name": experiment_name,
         "quantization_type": quantization_strategy,
     }
-
+    wandb.login()
     # Initialize experiment
     wandb.init(project="ML_Final_Project_ODDJ", name=experiment_name, config=config)
 
