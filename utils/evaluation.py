@@ -64,6 +64,8 @@ def evaluate_models(
             split = f'eval_{task_name}' 
             if model_args.quantization is not None:
                 split = f'{split}_{model_args.quantization}'
+                if model_args.quantization in {'absmax', 'zeropoint'}:
+                    split = f'{split}_{model_args.bits}'
             trainer.log_metrics(split, metrics)
             trainer.save_metrics(
                     split, combined if 'mnli' in task else metrics, 

@@ -1,4 +1,6 @@
 # Import required packages
+import sys
+sys.path.insert(1, 'utils')
 from parser import parse_arguments
 from dataset import load_data
 from model import load_models
@@ -8,16 +10,15 @@ from evaluation import evaluate_models
 
 # Define GLUE tasks
 task_to_keys = {
-    #"cola": ("sentence", None),
-    #"mnli": ("premise", "hypothesis"),
-    #"mrpc": ("sentence1", "sentence2"),
-    #"qnli": ("question", "sentence"),
-    #"qqp": ("question1", "question2"),
-    #"rte": ("sentence1", "sentence2"),
-    "sst2": ("sentence", None),
-    #"stsb": ("sentence1", "sentence2"),
-    #"wnli": ("sentence1", "sentence2")
-}
+    'cola': ('sentence', None),
+    'mnli': ('premise', 'hypothesis'),
+    'mrpc': ('sentence1', 'sentence2'),
+    'qnli': ('question', 'sentence'),
+    'qqp': ('question1', 'question2'),
+    'rte': ('sentence1', 'sentence2'),
+    'sst2': ('sentence', None),
+    'stsb': ('sentence1', 'sentence2'),
+    'wnli': ('sentence1', 'sentence2')}
 
 # Fine-tune pretrained model 
 def main():

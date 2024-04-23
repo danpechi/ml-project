@@ -19,7 +19,7 @@ def load_data(model_args, data_args, task_to_keys):
     num_labels = {} 
     for task_name in tasks:
         # Get number of labels
-        is_regression = task_name == 'stbs'
+        is_regression = task_name == 'stsb'
         if not is_regression:
             label_list_task = raw_datasets[task_name]['train'].features['label'].names
             label_list[task_name] = label_list_task

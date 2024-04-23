@@ -8,22 +8,24 @@ def preprocess_data(
         models, raw_datasets,
         label_list, num_labels, model_args, data_args, training_args,
         task_to_keys):
-    # Define tokenizer
-    tokenizer = AutoTokenizer.from_pretrained(
-            model_args.model_name_or_path, 
-            cache_dir=model_args.cache_dir,
-            use_fast=model_args.use_fast_tokenizer,
-            revision=model_args.model_revision,
-            token=model_args.token,
-            trust_remote_code=model_args.trust_remote_code) 
-    max_seq_length = min(data_args.max_seq_length, tokenizer.model_max_length)
 
     # Generate evaluation datasets 
     eval_dataset = {}
     for task_name, (sentence1_key, sentence2_key) in task_to_keys.items():
+        # Define tokenizer
+        model_task = f'{model_args.model_name_or_path}-{task_name}'
+        tokenizer = AutoTokenizer.from_pretrained(
+                model_task,
+                cache_dir=model_args.cache_dir,
+                use_fast=model_args.use_fast_tokenizer,
+                revision=model_args.model_revision,
+                token=model_args.token,
+                trust_remote_code=model_args.trust_remote_code) 
+        max_seq_length = min(data_args.max_seq_length, tokenizer.model_max_length)
+
         # Define map from labels to IDs
         model = models[task_name]
-        is_regression = task_name == 'stbs'
+        is_regression = task_name == 'stsb'
         num_labels_task = num_labels[task_name]
         label_to_id = None
         if (model.config.label2id != PretrainedConfig(

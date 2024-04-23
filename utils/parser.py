@@ -17,6 +17,8 @@ class ModelArguments:
     # Define model arguments
     model_name_or_path: str = field()
     quantization: str = field(default=None)
+    bits: int = field(default=None)
+    threshold: float = field(default=None)
     cache_dir: Optional[str] = field(default=None)
     use_fast_tokenizer: bool = field(default=True)
     model_revision: str = field(default='main')
