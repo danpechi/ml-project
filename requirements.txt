@@ -4,3 +4,4 @@ evaluate
 transformers
 scikit-learn
 scipy
+wandb
