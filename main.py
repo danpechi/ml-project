@@ -33,7 +33,7 @@ def main():
     models = load_models(model_args, data_args, num_labels, task_to_keys)
 
     # Quantize classification models
-    quantized_models = quantize_models(models, model_args)
+    quantized_models, quantized_sizes, model_sizes = quantize_models(models, model_args)
 
     # Preprocess evaluation datasets
     eval_dataset, raw_datasets, tokenizer = preprocess_data(
@@ -43,7 +43,8 @@ def main():
 
     # Evaluate quantized models performance
     evaluate_models(
-            quantized_models, eval_dataset, raw_datasets, tokenizer, 
+            quantized_models, quantized_sizes, model_sizes,
+            eval_dataset, raw_datasets, tokenizer, 
             model_args, data_args, training_args)
 
 # Evaluate models on GLUE tasks

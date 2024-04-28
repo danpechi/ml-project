@@ -1,5 +1,6 @@
 # Import required packages
 import torch
+import numpy as np
 
 # Quantize classification models
 def quantize_models(models, model_args):
@@ -9,19 +10,25 @@ def quantize_models(models, model_args):
 
     # Quantize classification models
     quantized_models = {}
+    quantized_sizes = {} 
+    model_sizes = {}
     for task_name, model in models.items():
         if model_args.quantization == 'absmax':
-            quantized_model = quantize_model(model, lambda X: absmax_quantize(X, model_args.bits))
+            model, quant_size, model_size = quantize_model(model, lambda X: absmax_quantize(X, model_args.bits))
         elif model_args.quantization == 'zeropoint':
-            quantized_model = quantize_model(model, lambda X: zeropoint_quantize(X, model_args.bits))
+            model, quant_size, model_size = quantize_model(model, lambda X: zeropoint_quantize(X, model_args.bits))
         elif model_args.quantization == 'norm':
-            quantized_model = quantize_model(model, lambda X: norm_quantize(X, model_args.threshold))
+            model, quant_size, model_size = quantize_model(model, lambda X: norm_quantize(X, model_args.quantile))
         else:
             raise ValueError('Unknown quantization scheme')
-        quantized_models[task_name] = quantized_model
+        
+        # Store quantized model and sizes
+        quantized_models[task_name] = model
+        quantized_sizes[task_name] = quant_size
+        model_sizes[task_name] = model_size
 
     # Return quantized classification models
-    return quantized_models
+    return quantized_models, quantized_sizes, model_sizes
 
 # Absmax quantize tensor 
 def absmax_quantize(X, bits):
@@ -35,9 +42,15 @@ def absmax_quantize(X, bits):
     # Quantize tensor
     X_quant = (scale * X).round()
     X_dequant = X_quant / scale
+    X_dequant = X_dequant.type(X.dtype)
+
+    # Compute parameter size
+    num_elements = X_quant.nelement()
+    quant_size = num_elements * (bits / 8)
+    dequant_size = num_elements * X_quant.element_size()
 
     # Return dequantized tensor
-    return X_dequant
+    return X_dequant, quant_size, dequant_size
 
 # Zero-point quantize tensor
 def zeropoint_quantize(X, bits):
@@ -58,30 +71,60 @@ def zeropoint_quantize(X, bits):
 
     # Dequantize tensor
     X_dequant = (X_quant - zeropoint) / scale
+    X_dequant = X_dequant.type(X.dtype)
+
+    # Compute parameter size
+    num_elements = X_quant.nelement()
+    quant_size = num_elements * (bits / 8)
+    dequant_size = num_elements * X_quant.element_size()
 
     # Return dequantized tensor
-    return X_dequant
+    return X_dequant, quant_size, dequant_size
 
 # Norm threshold tensor
-def norm_quantize(X, threshold):
+def norm_quantize(X, quantile):
     # Check valid quantile
-    assert isinstance(threshold, float)
+    assert isinstance(quantile, float) and 0 <= quantile <= 1
     
     # Compute threshold mask
+    X_abs = X.abs()
+    threshold = np.quantile(X_abs, quantile)
     mask = X.abs() >= threshold
 
     # Mask under threshold values
     X_thresh = X * mask
+    X_thresh = X_thresh.type(X.dtype)
+
+    # Compute parameter size
+    index_bits = np.ceil(np.log2(np.max(X.shape)))
+    quant_size = (X_thresh.ndim * (index_bits / 8) + X_thresh.element_size()) * float(mask.sum())
+    model_size = X_thresh.nelement() * X_thresh.element_size()
 
     # Return thresholded tensor
-    return X_thresh
+    return X_thresh, quant_size, model_size
 
 # Quantize parameters of model
 def quantize_model(model, quantizer):
+    # Initialize model sizes
+    quant_size = model_size = 0
+
     # Quantize parameters of model 
     for param in model.parameters():
-        quantized_param = quantizer(param.data)
+        quantized_param, quant_size_param, model_size_param = quantizer(param.data)
         param.data = quantized_param
+        quant_size += quant_size_param
+        model_size += model_size_param
 
+    # Quantize buffers of model
+    for buffer_ in model.buffers():
+        quantized_buffer, quant_size_buffer, model_size_buffer = quantizer(buffer_.data)
+        buffer_.data = quantized_buffer
+        quant_size += quant_size_buffer
+        model_size += model_size_buffer
+
+    # Convert model sizes into MB
+    quant_size = quant_size / (1024 ** 2)
+    model_size = model_size / (1024 ** 2)
+    
     # Return quantized model
-    return model
+    return model, quant_size, model_size

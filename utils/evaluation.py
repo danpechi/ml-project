@@ -10,7 +10,8 @@ import time
 
 # Evaluate models performance 
 def evaluate_models(
-        models, eval_dataset, raw_datasets, tokenizer, 
+        models, quantized_sizes, model_sizes,
+        eval_dataset, raw_datasets, tokenizer, 
         model_args, data_args, training_args):
     # Evaluate models performance 
     for task_name in models.keys(): 
@@ -50,7 +51,8 @@ def evaluate_models(
             metrics = trainer.evaluate(eval_dataset=eval_dataset_task)
             eval_time = time.time() - started
             metrics['eval_time'] = eval_time 
-            # metrics['size'] = compute_size(model)
+            metrics['quant_size'] = quantized_sizes[task_name]
+            metrics['model_size'] = model_sizes[task_name]
             max_eval_samples = (
                     data_args.max_eval_samples 
                     if data_args.max_eval_samples is not None
@@ -66,6 +68,10 @@ def evaluate_models(
                 split = f'{split}_{model_args.quantization}'
                 if model_args.quantization in {'absmax', 'zeropoint'}:
                     split = f'{split}_{model_args.bits}'
+                elif model_args.quantization == 'norm':
+                    split = f'{split}_{model_args.quantile}'
+            else:
+                split = f'{split}_none_none'
             trainer.log_metrics(split, metrics)
             trainer.save_metrics(
                     split, combined if 'mnli' in task else metrics, 
@@ -80,15 +86,3 @@ def compute_metrics(p: EvalPrediction, is_regression, metric):
     if len(result) > 1:
         result['combined_core'] = np.mean(list(result.values())).item()
     return result
-
-'''
-# Compute size of model
-def compute_size(model):
-    # Compute size of model
-    torch.save(model.state_dict(), 'temp.p')
-    model_size = os.path.getsize('temp.p') / 1e6
-    os.remove('temp.p')
-
-    # Return size of model
-    return model_size
-'''
